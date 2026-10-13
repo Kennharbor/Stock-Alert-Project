@@ -1,0 +1,22 @@
+{
+  "name": "stock-alert-project",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A REST API for stock monitoring and restocking",
+  "main": "src/server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "keywords": [],
+  "dependencies": {
+    "dotenv": "^18.0.7",
+    "drizzle-orm": "^0.45.4",
+    "express": "^5.3.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.11"
+  }
+}
