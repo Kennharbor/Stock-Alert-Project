@@ -7,6 +7,7 @@ text,
 integer,
 decimal,
 timestamp,
+unique,
 } from "drizzle-orm/pg-core";
 
 // Users who own their shop data
@@ -36,31 +37,46 @@ createdAt: timestamp("created_at", { withTimezone: true })
 });
 
 // Products
-export const products = pgTable("products", {
-id: uuid("id").defaultRandom().primaryKey(),
-userId: uuid("user_id")
-.notNull()
-.references(() => users.id, { onDelete: "cascade" }),
-categoryId: uuid("category_id").references(() => categories.id, {
-onDelete: "set null",
-}),
-name: varchar("name", { length: 150 }).notNull(),
-sku: varchar("sku", { length: 100 }).notNull(),
-quantity: integer("quantity").notNull().default(0),
-minimumStockLevel: integer("minimum_stock_level")
-.notNull()
-.default(5),
-unitPrice: decimal("unit_price", {
-precision: 12,
-scale: 2,
-}),
-createdAt: timestamp("created_at", { withTimezone: true })
-.defaultNow()
-.notNull(),
-updatedAt: timestamp("updated_at", { withTimezone: true })
-.defaultNow()
-.notNull(),
-});
+export const products = pgTable(
+  "products",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+
+    categoryId: uuid("category_id").references(() => categories.id, {
+      onDelete: "set null",
+    }),
+
+    name: varchar("name", { length: 150 }).notNull(),
+
+    sku: varchar("sku", { length: 100 }).notNull(),
+
+    quantity: integer("quantity").notNull().default(0),
+
+    minimumStockLevel: integer("minimum_stock_level")
+      .notNull()
+      .default(5),
+
+    unitPrice: decimal("unit_price", {
+      precision: 12,
+      scale: 2,
+    }),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique("products_user_id_sku_unique").on(table.userId, table.sku),
+  ],
+);
 
 // Stock movement types
 export const stockMovementType = pgEnum("stock_movement_type", [
