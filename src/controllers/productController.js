@@ -1,5 +1,6 @@
 import { db } from "../db/index.js";
 import { products } from "../db/schema.js";
+import { eq, and } from "drizzle-orm";
 
 export async function createProduct(req, res) {
   try {
@@ -12,21 +13,45 @@ export async function createProduct(req, res) {
       categoryId,
     } = req.body;
 
-    // Check required fields
-    if (!name || !sku) {
+    // Validate required fields
+    if (
+      typeof name !== "string" ||
+      !name.trim() ||
+      typeof sku !== "string" ||
+      !sku.trim()
+    ) {
       return res.status(400).json({
         success: false,
         message: "Product name and SKU are required.",
       });
     }
 
-    // Save the product to the database
+    // Check that the SKU is not already used by this user
+    const existingProduct = await db
+      .select({ id: products.id })
+      .from(products)
+      .where(
+        and(
+          eq(products.userId, req.user.id),
+          eq(products.sku, sku.trim()),
+        ),
+      )
+      .limit(1);
+
+    if (existingProduct.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: "You already have a product with this SKU.",
+      });
+    }
+
+    // Create the product
     const [newProduct] = await db
       .insert(products)
       .values({
         userId: req.user.id,
-        name,
-        sku,
+        name: name.trim(),
+        sku: sku.trim(),
         quantity: quantity ?? 0,
         minimumStockLevel: minimumStockLevel ?? 5,
         unitPrice: unitPrice ?? null,
