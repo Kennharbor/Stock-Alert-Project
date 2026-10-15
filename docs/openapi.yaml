@@ -1,0 +1,371 @@
+openapi: 3.1.0
+info:
+  title: StockAlert API
+  version: 1.0.0
+  description: REST API for managing a user's retail inventory, categories, and stock movements.
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development
+tags:
+  - name: Health
+  - name: Authentication
+  - name: Categories
+  - name: Products
+  - name: Stock movements
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags: [Health]
+      security: []
+      summary: Check API health
+      responses:
+        "200":
+          description: API is running
+  /health/db:
+    get:
+      tags: [Health]
+      security: []
+      summary: Check database connection
+      responses:
+        "200":
+          description: Database connection successful
+        "503":
+          description: Database unavailable
+  /auth/register:
+    post:
+      tags: [Authentication]
+      security: []
+      summary: Register a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        "201":
+          description: Account created
+        "400":
+          description: Invalid input
+        "409":
+          description: Email already registered
+  /auth/login:
+    post:
+      tags: [Authentication]
+      security: []
+      summary: Log in and receive a JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Login successful
+        "400":
+          description: Invalid input
+        "401":
+          description: Invalid credentials
+  /categories:
+    get:
+      tags: [Categories]
+      summary: List the authenticated user's categories
+      responses:
+        "200":
+          description: Category list
+        "401":
+          description: Authentication required
+    post:
+      tags: [Categories]
+      summary: Create a category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                description:
+                  type: string
+      responses:
+        "201":
+          description: Category created
+        "400":
+          description: Invalid input
+        "401":
+          description: Authentication required
+  /categories/{categoryId}:
+    parameters:
+      - $ref: "#/components/parameters/CategoryId"
+    get:
+      tags: [Categories]
+      summary: Get one category owned by the authenticated user
+      responses:
+        "200":
+          description: Category details
+        "401":
+          description: Authentication required
+        "404":
+          description: Not found
+    patch:
+      tags: [Categories]
+      summary: Update a category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                description:
+                  type: [string, "null"]
+              minProperties: 1
+      responses:
+        "200":
+          description: Category updated
+        "400":
+          description: Invalid input
+        "401":
+          description: Authentication required
+        "404":
+          description: Not found
+    delete:
+      tags: [Categories]
+      summary: Delete a category; associated products become uncategorized
+      responses:
+        "204":
+          description: Category deleted
+        "401":
+          description: Authentication required
+        "404":
+          description: Not found
+  /products:
+    get:
+      tags: [Products]
+      summary: List the authenticated user's products
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: categoryId
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [IN_STOCK, LOW_STOCK, OUT_OF_STOCK]
+      responses:
+        "200":
+          description: Product list
+        "401":
+          description: Authentication required
+    post:
+      tags: [Products]
+      summary: Create a product (initial quantity is zero; use stock movement to add stock)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductCreate"
+      responses:
+        "201":
+          description: Product created
+        "400":
+          description: Invalid input
+        "401":
+          description: Authentication required
+        "404":
+          description: Category not found or not owned by user
+        "409":
+          description: Duplicate SKU for this user
+  /products/{productId}:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+    get:
+      tags: [Products]
+      summary: Get one product owned by the authenticated user
+      responses:
+        "200":
+          description: Product details
+        "401":
+          description: Authentication required
+        "404":
+          description: Not found
+    patch:
+      tags: [Products]
+      summary: Update product metadata; quantity is changed only through stock movements
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUpdate"
+      responses:
+        "200":
+          description: Product updated
+        "400":
+          description: Invalid input
+        "401":
+          description: Authentication required
+        "404":
+          description: Product or category not found
+        "409":
+          description: Duplicate SKU for this user
+    delete:
+      tags: [Products]
+      summary: Delete a product and its movement history
+      responses:
+        "204":
+          description: Product deleted
+        "401":
+          description: Authentication required
+        "404":
+          description: Not found
+  /products/{productId}/stock-movements:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+    get:
+      tags: [Stock movements]
+      summary: List a product's stock movement history, newest first
+      responses:
+        "200":
+          description: Movement history
+        "401":
+          description: Authentication required
+        "404":
+          description: Product not found
+    post:
+      tags: [Stock movements]
+      summary: Record stock-in or stock-out transactionally
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockMovementCreate"
+      responses:
+        "201":
+          description: Movement recorded
+        "400":
+          description: Invalid movement
+        "401":
+          description: Authentication required
+        "404":
+          description: Product not found
+        "409":
+          description: Insufficient stock
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    ProductId:
+      in: path
+      name: productId
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CategoryId:
+      in: path
+      name: categoryId
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    ProductCreate:
+      type: object
+      additionalProperties: false
+      required: [name, sku]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        sku:
+          type: string
+          minLength: 1
+          maxLength: 100
+        minimumStockLevel:
+          type: integer
+          minimum: 0
+          default: 5
+        unitPrice:
+          type: number
+          minimum: 0
+          multipleOf: 0.01
+        categoryId:
+          type: string
+          format: uuid
+    ProductUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        sku:
+          type: string
+          minLength: 1
+          maxLength: 100
+        minimumStockLevel:
+          type: integer
+          minimum: 0
+        unitPrice:
+          type: [number, "null"]
+          minimum: 0
+          multipleOf: 0.01
+        categoryId:
+          type: [string, "null"]
+          format: uuid
+    StockMovementCreate:
+      type: object
+      additionalProperties: false
+      required: [type, quantity]
+      properties:
+        type:
+          type: string
+          enum: [STOCK_IN, STOCK_OUT]
+        quantity:
+          type: integer
+          minimum: 1
+        note:
+          type: string
+          maxLength: 1000
