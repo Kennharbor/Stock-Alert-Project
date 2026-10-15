@@ -3,12 +3,14 @@ import express from "express";
 import { db, pool } from "./db/index.js";
 import { sql } from "drizzle-orm";
 import productRoutes from "./routes/productRoutes.js";
+import { devUser } from "./middleware/devUser.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use("/api/v1/products", productRoutes);
+app.use("/api/v1/products", devUser, productRoutes);
+
 
 // Basic API health check
 app.get("/api/v1/health", (req, res) => {
