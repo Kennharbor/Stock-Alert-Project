@@ -1,0 +1,54 @@
+### Health check
+GET http://localhost:3000/api/v1/health
+
+### Database health check
+GET http://localhost:3000/api/v1/health/db
+
+### Create a product
+POST http://localhost:3000/api/v1/products
+Content-Type: application/json
+
+{
+  "name": "USB Keyboard",
+  "sku": "KB-001",
+  "quantity": 15,
+  "minimumStockLevel": 5,
+  "unitPrice": 12000
+}
+
+### List all products
+GET http://localhost:3000/api/v1/products
+
+### Retrieve one product
+# Replace PRODUCT_ID with an existing product UUID.
+GET http://localhost:3000/api/v1/products/PRODUCT_ID
+
+### Update a product
+# Replace PRODUCT_ID with an existing product UUID.
+PATCH http://localhost:3000/api/v1/products/PRODUCT_ID
+Content-Type: application/json
+
+{
+  "name": "USB Keyboard Pro",
+  "minimumStockLevel": 8
+}
+
+### Delete a product
+# Replace PRODUCT_ID with an existing product UUID.
+DELETE http://localhost:3000/api/v1/products/PRODUCT_ID
+
+### Validation test: Missing required fields
+POST http://localhost:3000/api/v1/products
+Content-Type: application/json
+
+{
+  "name": "",
+  "sku": ""
+}
+
+### Validation test: Empty update
+# Replace PRODUCT_ID with an existing product UUID.
+PATCH http://localhost:3000/api/v1/products/PRODUCT_ID
+Content-Type: application/json
+
+{}
