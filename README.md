@@ -6,20 +6,32 @@ The project is being built as a three-week, part-time learning project. It uses 
 
 ## Project status
 
-**Implemented so far**
-- Node.js and Express server
-- PostgreSQL database connection through `pg`
-- Drizzle ORM schema and migrations for `users`, `categories`, `products`, and `stock_movements`
-- Health endpoints: `GET /api/v1/health` and `GET /api/v1/health/db`
-- SKU uniqueness per user at the database level
-- Product route registration and initial request-validation work in progress
+## Project status
 
-**Not yet complete**
-- Registration and login
-- Authentication and authorization middleware
-- Complete product and category CRUD
-- Stock-in/stock-out business logic
-- Automated tests, full API documentation, and deployment
+**Completed**
+
+* Node.js and Express server setup using JavaScript ES modules.
+* PostgreSQL database connection using `pg`.
+* Drizzle ORM schema and migrations for `users`, `categories`, `products`, and `stock_movements`.
+* Server and database health-check endpoints.
+* Product CRUD endpoints: create, list, retrieve by ID, update, and delete.
+* Request-body validation using Zod.
+* Per-user SKU uniqueness enforced at the database level.
+* Product ownership filtering through temporary development-user middleware.
+* Sample categories and products inserted for development.
+* Manual API testing using HTTP requests, including successful requests, validation errors, duplicate SKU conflicts, and missing-product responses.
+* API design documentation and sample HTTP requests.
+
+**Still to implement**
+
+* User registration and login.
+* Password hashing and JWT-based authentication.
+* Replacement of temporary development-user middleware with verified authentication.
+* Category CRUD endpoints.
+* Stock-in and stock-out operations, including stock movement records and transactional quantity updates.
+* Computed stock-status responses.
+* Automated tests, final documentation review, security checks, and deployment.
+
 
 ## Technology stack
 
