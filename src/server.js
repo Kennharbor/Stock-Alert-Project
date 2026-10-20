@@ -4,11 +4,13 @@ import { db, pool } from "./db/index.js";
 import { sql } from "drizzle-orm";
 import productRoutes from "./routes/productRoutes.js";
 import { devUser } from "./middleware/devUser.js";
+import authRoutes from "./routes/authRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/products", devUser, productRoutes);
 
 

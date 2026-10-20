@@ -1,0 +1,31 @@
+@baseUrl = http://localhost:3000/api/v1
+
+### 1. Register a new user
+
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+"email": "[stockalert-owner@example.com](mailto:stockalert-owner@example.com)",
+"password": "StrongPass123!"
+}
+
+### 2. Test duplicate registration
+
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+"email": "[stockalert-owner@example.com](mailto:stockalert-owner@example.com)",
+"password": "StrongPass123!"
+}
+
+### 3. Test invalid registration data
+
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+"email": "not-an-email",
+"password": "short"
+}
