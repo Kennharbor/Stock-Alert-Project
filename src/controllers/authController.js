@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { users } from "../db/schema.js";
@@ -70,3 +71,67 @@ next(error);
 
 }
 }
+
+export async function login(req, res, next) {
+try {
+const { email, password } = req.body;
+
+
+// Find the account associated with this email.
+const [user] = await db
+  .select()
+  .from(users)
+  .where(eq(users.email, email))
+  .limit(1);
+
+// Use the same response for an unknown email or incorrect password.
+if (!user) {
+  return res.status(401).json({
+    success: false,
+    message: "Invalid email or password.",
+  });
+}
+
+// Compare the submitted password with the stored bcrypt hash.
+const passwordMatches = await bcrypt.compare(
+  password,
+  user.passwordHash,
+);
+
+if (!passwordMatches) {
+  return res.status(401).json({
+    success: false,
+    message: "Invalid email or password.",
+  });
+}
+
+// JWT generation will be added after the login credentials are verified.
+const token = jwt.sign(
+  { email: user.email },
+  process.env.JWT_SECRET,
+  {
+    subject: user.id,
+    expiresIn: process.env.JWT_EXPIRES_IN || "1h",
+  },
+);
+
+return res.status(200).json({
+  success: true,
+  message: "Login successful.",
+  data: {
+    user: {
+      id: user.id,
+      email: user.email,
+    },
+    token,
+    tokenType: "Bearer",
+    expiresIn: process.env.JWT_EXPIRES_IN || "1h",
+  },
+});
+
+
+} catch (error) {
+next(error);
+}
+}
+
