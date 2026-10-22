@@ -1,5 +1,5 @@
 import { db } from "../db/index.js";
-import { products } from "../db/schema.js";
+import { products, categories } from "../db/schema.js";
 import { eq, and } from "drizzle-orm";
 
 export async function createProduct(req, res) {
@@ -24,6 +24,27 @@ export async function createProduct(req, res) {
         message: "Product name and SKU are required.",
       });
     }
+
+// Verify that the category belongs to the authenticated user.
+if (categoryId) {
+  const [category] = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(
+      and(
+        eq(categories.id, categoryId),
+        eq(categories.userId, req.user.id),
+      ),
+    )
+    .limit(1);
+
+  if (!category) {
+    return res.status(404).json({
+      success: false,
+      message: "Category not found.",
+    });
+  }
+}
 
     // Check that the SKU is not already used by this user
     const existingProduct = await db
@@ -74,60 +95,95 @@ export async function createProduct(req, res) {
 }
 
 export async function getProducts(req, res) {
-  try {
-    const userProducts = await db
-      .select()
-      .from(products)
-      .where(eq(products.userId, req.user.id));
+try {
+const { categoryId } = req.query;
 
-    return res.status(200).json({
-      success: true,
-      count: userProducts.length,
-      data: userProducts,
-    });
-  } catch (error) {
-    console.error("Get products error:", error.message);
 
-    return res.status(500).json({
+// Start by restricting results to the authenticated user.
+const conditions = [eq(products.userId, req.user.id)];
+
+// If categoryId is provided, validate it and filter by category.
+if (categoryId !== undefined) {
+  if (
+    typeof categoryId !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      categoryId,
+    )
+  ) {
+    return res.status(400).json({
       success: false,
-      message: "Unable to retrieve products.",
+      message: "Category ID must be a valid UUID.",
     });
   }
+
+  conditions.push(eq(products.categoryId, categoryId));
+}
+
+const userProducts = await db
+  .select()
+  .from(products)
+  .where(and(...conditions));
+
+return res.status(200).json({
+  success: true,
+  count: userProducts.length,
+  data: userProducts,
+});
+
+
+} catch (error) {
+console.error("Get products error:", error.message);
+
+
+return res.status(500).json({
+  success: false,
+  message: "Unable to retrieve products.",
+});
+
+
+}
 }
 
 export async function getProductById(req, res) {
-  try {
-    const [product] = await db
-      .select()
-      .from(products)
-      .where(
-        and(
-          eq(products.id, req.params.id),
-          eq(products.userId, req.user.id),
-        ),
-      )
-      .limit(1);
+try {
+const [product] = await db
+.select()
+.from(products)
+.where(
+and(
+eq(products.id, req.params.id),
+eq(products.userId, req.user.id),
+),
+)
+.limit(1);
 
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found.",
-      });
-    }
 
-    return res.status(200).json({
-      success: true,
-      data: product,
-    });
-  } catch (error) {
-    console.error("Get product error:", error.message);
-
-    return res.status(500).json({
-      success: false,
-      message: "Unable to retrieve product.",
-    });
-  }
+if (!product) {
+  return res.status(404).json({
+    success: false,
+    message: "Product not found.",
+  });
 }
+
+return res.status(200).json({
+  success: true,
+  data: product,
+});
+
+
+} catch (error) {
+console.error("Get product error:", error.message);
+
+
+return res.status(500).json({
+  success: false,
+  message: "Unable to retrieve product.",
+});
+
+
+}
+}
+
 
 export async function updateProduct(req, res) {
   try {
@@ -151,6 +207,28 @@ export async function updateProduct(req, res) {
         success: false,
         message: "Product not found.",
       });
+    }
+
+        // Verify that the category belongs to the authenticated user.
+    // Allow null to remove the product's category assignment.
+    if (categoryId !== undefined && categoryId !== null) {
+      const [category] = await db
+        .select({ id: categories.id })
+        .from(categories)
+        .where(
+          and(
+            eq(categories.id, categoryId),
+            eq(categories.userId, req.user.id),
+          ),
+        )
+        .limit(1);
+
+      if (!category) {
+        return res.status(404).json({
+          success: false,
+          message: "Category not found.",
+        });
+      }
     }
 
     // Check SKU uniqueness if the SKU is being changed.
