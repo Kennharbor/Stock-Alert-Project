@@ -7,7 +7,6 @@ export async function createProduct(req, res) {
     const {
       name,
       sku,
-      quantity,
       minimumStockLevel,
       unitPrice,
       categoryId,
@@ -52,7 +51,7 @@ export async function createProduct(req, res) {
         userId: req.user.id,
         name: name.trim(),
         sku: sku.trim(),
-        quantity: quantity ?? 0,
+        quantity: 0,
         minimumStockLevel: minimumStockLevel ?? 5,
         unitPrice: unitPrice ?? null,
         categoryId: categoryId ?? null,

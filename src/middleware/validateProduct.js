@@ -14,13 +14,6 @@ export const createProductSchema = z
       .min(1, "SKU is required.")
       .max(100, "SKU cannot exceed 100 characters."),
 
-    quantity: z
-      .number()
-      .int("Quantity must be a whole number.")
-      .min(0, "Quantity cannot be negative.")
-      .optional()
-      .default(0),
-
     minimumStockLevel: z
       .number()
       .int("Minimum stock level must be a whole number.")
