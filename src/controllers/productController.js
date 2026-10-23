@@ -2,6 +2,12 @@ import { db } from "../db/index.js";
 import { products, categories } from "../db/schema.js";
 import { eq, and } from "drizzle-orm";
 
+
+function isValidUUID(id) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+}
+
+
 export async function createProduct(req, res) {
   try {
     const {
@@ -144,45 +150,51 @@ return res.status(500).json({
 }
 }
 
+
 export async function getProductById(req, res) {
-try {
-const [product] = await db
-.select()
-.from(products)
-.where(
-and(
-eq(products.id, req.params.id),
-eq(products.userId, req.user.id),
-),
-)
-.limit(1);
+  const { id } = req.params;
 
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid product ID. A valid UUID is required.",
+    });
+  }
 
-if (!product) {
-  return res.status(404).json({
-    success: false,
-    message: "Product not found.",
-  });
+  try {
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(
+        and(
+          eq(products.id, id),
+          eq(products.userId, req.user.id),
+        ),
+      )
+      .limit(1);
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: product,
+    });
+  } catch (error) {
+    console.error("Get product error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve product.",
+    });
+  }
 }
 
-return res.status(200).json({
-  success: true,
-  data: product,
-});
 
-
-} catch (error) {
-console.error("Get product error:", error.message);
-
-
-return res.status(500).json({
-  success: false,
-  message: "Unable to retrieve product.",
-});
-
-
-}
-}
 
 
 export async function updateProduct(req, res) {
