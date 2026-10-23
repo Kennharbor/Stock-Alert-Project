@@ -1,11 +1,7 @@
 import { db } from "../db/index.js";
 import { products, categories } from "../db/schema.js";
 import { eq, and } from "drizzle-orm";
-
-
-function isValidUUID(id) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
-}
+import { isValidUUID } from "../utils/validation.js";
 
 
 export async function createProduct(req, res) {
@@ -195,9 +191,17 @@ export async function getProductById(req, res) {
 }
 
 
-
-
 export async function updateProduct(req, res) {
+  const { id } = req.params;
+
+  // Validate the product ID before querying the database.
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid product ID. A valid UUID is required.",
+    });
+  }
+
   try {
     const { name, sku, minimumStockLevel, unitPrice, categoryId } =
       req.body;
@@ -208,7 +212,7 @@ export async function updateProduct(req, res) {
       .from(products)
       .where(
         and(
-          eq(products.id, req.params.id),
+          eq(products.id, id),
           eq(products.userId, req.user.id),
         ),
       )
@@ -221,7 +225,7 @@ export async function updateProduct(req, res) {
       });
     }
 
-        // Verify that the category belongs to the authenticated user.
+    // Verify that the category belongs to the authenticated user.
     // Allow null to remove the product's category assignment.
     if (categoryId !== undefined && categoryId !== null) {
       const [category] = await db
@@ -279,7 +283,7 @@ export async function updateProduct(req, res) {
       .set(updates)
       .where(
         and(
-          eq(products.id, req.params.id),
+          eq(products.id, id),
           eq(products.userId, req.user.id),
         ),
       )
@@ -300,13 +304,26 @@ export async function updateProduct(req, res) {
   }
 }
 
+
+
+
 export async function deleteProduct(req, res) {
+  const { id } = req.params;
+
+  // Validate the product ID before querying the database.
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid product ID. A valid UUID is required.",
+    });
+  }
+
   try {
     const [deletedProduct] = await db
       .delete(products)
       .where(
         and(
-          eq(products.id, req.params.id),
+          eq(products.id, id),
           eq(products.userId, req.user.id),
         ),
       )
@@ -337,3 +354,4 @@ export async function deleteProduct(req, res) {
     });
   }
 }
+

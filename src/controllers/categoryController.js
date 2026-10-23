@@ -1,6 +1,7 @@
 import { db } from "../db/index.js";
 import { categories } from "../db/schema.js";
 import { eq, and } from "drizzle-orm";
+import { isValidUUID } from "../utils/validation.js";
 
 export async function createCategory(req, res) {
   try {
@@ -72,14 +73,24 @@ export async function getCategories(req, res) {
   }
 }
 
+
 export async function getCategoryById(req, res) {
+  const { id } = req.params;
+
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid category ID. A valid UUID is required.",
+    });
+  }
+
   try {
     const [category] = await db
       .select()
       .from(categories)
       .where(
         and(
-          eq(categories.id, req.params.id),
+          eq(categories.id, id),
           eq(categories.userId, req.user.id),
         ),
       )
@@ -106,7 +117,18 @@ export async function getCategoryById(req, res) {
   }
 }
 
+
+
 export async function updateCategory(req, res) {
+  const { id } = req.params;
+
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid category ID. A valid UUID is required.",
+    });
+  }
+
   try {
     const { name, description } = req.body;
 
@@ -115,7 +137,7 @@ export async function updateCategory(req, res) {
       .from(categories)
       .where(
         and(
-          eq(categories.id, req.params.id),
+          eq(categories.id, id),
           eq(categories.userId, req.user.id),
         ),
       )
@@ -161,7 +183,7 @@ export async function updateCategory(req, res) {
       .set(updates)
       .where(
         and(
-          eq(categories.id, req.params.id),
+          eq(categories.id, id),
           eq(categories.userId, req.user.id),
         ),
       )
@@ -182,13 +204,23 @@ export async function updateCategory(req, res) {
   }
 }
 
+
 export async function deleteCategory(req, res) {
+  const { id } = req.params;
+
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid category ID. A valid UUID is required.",
+    });
+  }
+
   try {
     const [deletedCategory] = await db
       .delete(categories)
       .where(
         and(
-          eq(categories.id, req.params.id),
+          eq(categories.id, id),
           eq(categories.userId, req.user.id),
         ),
       )
@@ -218,3 +250,4 @@ export async function deleteCategory(req, res) {
     });
   }
 }
+
