@@ -1,11 +1,19 @@
 import { db } from "../db/index.js";
 import { products, stockMovements } from "../db/schema.js";
 import { eq, and, desc } from "drizzle-orm";
+import { isValidUUID } from "../utils/validation.js";
 
 export async function recordStockMovement(req, res) {
   const { productId } = req.params;
   const { type, quantity, note } = req.body;
   const userId = req.user.id;
+
+  if (!isValidUUID(productId)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid product ID. A valid UUID is required.",
+    });
+  }
 
   try {
     const result = await db.transaction(async (tx) => {
@@ -112,6 +120,13 @@ export async function recordStockMovement(req, res) {
 export async function getStockMovements(req, res) {
   const { productId } = req.params;
   const userId = req.user.id;
+
+  if (!isValidUUID(productId)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid product ID. A valid UUID is required.",
+    });
+  }
 
   try {
     // Confirm that the product belongs to the authenticated user.
