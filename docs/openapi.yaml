@@ -3,38 +3,91 @@ info:
   title: StockAlert API
   version: 1.0.0
   description: REST API for managing a user's retail inventory, categories, and stock movements.
+
 servers:
   - url: http://localhost:3000/api/v1
     description: Local development
+
 tags:
   - name: Health
+    description: Check API availability and database connectivity.
   - name: Authentication
+    description: Register accounts and authenticate users with JWTs.
   - name: Categories
+    description: Create and manage inventory categories.
   - name: Products
+    description: Create and manage products in the authenticated user's inventory.
   - name: Stock movements
+    description: Record stock changes and retrieve product movement history.
 security:
   - bearerAuth: []
+
 paths:
   /health:
     get:
+      operationId: getApiHealth
       tags: [Health]
       security: []
       summary: Check API health
       responses:
         "200":
-          description: API is running
+          description: API is running successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message, timestamp]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "StockAlert API is running."
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2026-10-23T10:00:00.000Z"
+
   /health/db:
     get:
+      operationId: getDatabaseHealth
       tags: [Health]
       security: []
       summary: Check database connection
       responses:
         "200":
           description: Database connection successful
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Database connection successful."
         "503":
-          description: Database unavailable
+          description: Database connection unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message]
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Database connection unavailable."
+
   /auth/register:
     post:
+      operationId: registerUser
       tags: [Authentication]
       security: []
       summary: Register a user
@@ -44,14 +97,17 @@ paths:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required: [email, password]
               properties:
                 email:
                   type: string
                   format: email
+                  maxLength: 255
                 password:
                   type: string
                   minLength: 8
+                  maxLength: 72
       responses:
         "201":
           description: Account created
@@ -59,8 +115,12 @@ paths:
           description: Invalid input
         "409":
           description: Email already registered
+        "500":
+          description: Unexpected server or database error
+
   /auth/login:
     post:
+      operationId: loginUser
       tags: [Authentication]
       security: []
       summary: Log in and receive a JWT
@@ -70,13 +130,16 @@ paths:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required: [email, password]
               properties:
                 email:
                   type: string
                   format: email
+                  maxLength: 255
                 password:
                   type: string
+                  minLength: 1
       responses:
         "200":
           description: Login successful
@@ -84,8 +147,12 @@ paths:
           description: Invalid input
         "401":
           description: Invalid credentials
+        "500":
+          description: Unexpected server or database error
+
   /categories:
     get:
+      operationId: getCategories
       tags: [Categories]
       summary: List the authenticated user's categories
       responses:
@@ -93,7 +160,10 @@ paths:
           description: Category list
         "401":
           description: Authentication required
+        "500":
+          description: Unexpected server or database error
     post:
+      operationId: createCategory
       tags: [Categories]
       summary: Create a category
       requestBody:
@@ -102,6 +172,7 @@ paths:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required: [name]
               properties:
                 name:
@@ -109,7 +180,7 @@ paths:
                   minLength: 1
                   maxLength: 100
                 description:
-                  type: string
+                  type: [string, "null"]
       responses:
         "201":
           description: Category created
@@ -117,20 +188,31 @@ paths:
           description: Invalid input
         "401":
           description: Authentication required
+        "409":
+          description: A category with this name already exists for the authenticated user
+        "500":
+          description: Unexpected server or database error
+
   /categories/{categoryId}:
     parameters:
       - $ref: "#/components/parameters/CategoryId"
     get:
+      operationId: getCategoryById
       tags: [Categories]
       summary: Get one category owned by the authenticated user
       responses:
         "200":
           description: Category details
+        "400":
+          description: Invalid category UUID
         "401":
           description: Authentication required
         "404":
-          description: Not found
+          description: Category not found or not owned by the authenticated user
+        "500":
+          description: Unexpected server or database error
     patch:
+      operationId: updateCategory
       tags: [Categories]
       summary: Update a category
       requestBody:
@@ -139,6 +221,7 @@ paths:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               properties:
                 name:
                   type: string
@@ -149,50 +232,58 @@ paths:
               minProperties: 1
       responses:
         "200":
-          description: Category updated
+          description: Category updated successfully
         "400":
-          description: Invalid input
+          description: Invalid UUID or request body
         "401":
           description: Authentication required
         "404":
-          description: Not found
+          description: Category not found or not owned by the authenticated user
+        "409":
+          description: A category with this name already exists for the authenticated user
+        "500":
+          description: Unexpected server or database error
     delete:
+      operationId: deleteCategory
       tags: [Categories]
       summary: Delete a category; associated products become uncategorized
       responses:
-        "204":
-          description: Category deleted
+        "200":
+          description: Category deleted successfully
+        "400":
+          description: Invalid category UUID
         "401":
           description: Authentication required
         "404":
-          description: Not found
+          description: Category not found or not owned by the authenticated user
+        "500":
+          description: Unexpected server or database error
+
   /products:
     get:
+      operationId: getProducts
       tags: [Products]
       summary: List the authenticated user's products
       parameters:
         - in: query
-          name: search
-          schema:
-            type: string
-        - in: query
           name: categoryId
+          description: Filter products by a category ID
           schema:
             type: string
             format: uuid
-        - in: query
-          name: status
-          schema:
-            type: string
-            enum: [IN_STOCK, LOW_STOCK, OUT_OF_STOCK]
       responses:
         "200":
           description: Product list
+        "400":
+          description: Invalid category UUID
         "401":
           description: Authentication required
+        "500":
+          description: Unexpected server or database error
     post:
+      operationId: createProduct
       tags: [Products]
-      summary: Create a product (initial quantity is zero; use stock movement to add stock)
+      summary: Create a product; initial quantity is zero, and stock is added through stock movements
       requestBody:
         required: true
         content:
@@ -207,23 +298,32 @@ paths:
         "401":
           description: Authentication required
         "404":
-          description: Category not found or not owned by user
+          description: Category not found or not owned by the authenticated user
         "409":
           description: Duplicate SKU for this user
+        "500":
+          description: Unexpected server or database error
+
   /products/{productId}:
     parameters:
       - $ref: "#/components/parameters/ProductId"
     get:
+      operationId: getProductById
       tags: [Products]
       summary: Get one product owned by the authenticated user
       responses:
         "200":
           description: Product details
+        "400":
+          description: Invalid product UUID
         "401":
           description: Authentication required
         "404":
-          description: Not found
+          description: Product not found or not owned by the authenticated user
+        "500":
+          description: Unexpected server or database error
     patch:
+      operationId: updateProduct
       tags: [Products]
       summary: Update product metadata; quantity is changed only through stock movements
       requestBody:
@@ -236,37 +336,51 @@ paths:
         "200":
           description: Product updated
         "400":
-          description: Invalid input
+          description: Invalid product UUID or request body
         "401":
           description: Authentication required
         "404":
-          description: Product or category not found
+          description: Product or category not found or not owned by the authenticated user
         "409":
           description: Duplicate SKU for this user
+        "500":
+          description: Unexpected server or database error
     delete:
+      operationId: deleteProduct
       tags: [Products]
       summary: Delete a product and its movement history
       responses:
-        "204":
-          description: Product deleted
+        "200":
+          description: Product deleted successfully
+        "400":
+          description: Invalid product UUID
         "401":
           description: Authentication required
         "404":
-          description: Not found
+          description: Product not found or not owned by the authenticated user
+        "500":
+          description: Unexpected server or database error
+
   /products/{productId}/stock-movements:
     parameters:
       - $ref: "#/components/parameters/ProductId"
     get:
+      operationId: getStockMovements
       tags: [Stock movements]
       summary: List a product's stock movement history, newest first
       responses:
         "200":
           description: Movement history
+        "400":
+          description: Invalid product UUID
         "401":
           description: Authentication required
         "404":
-          description: Product not found
+          description: Product not found or not owned by the authenticated user
+        "500":
+          description: Unexpected server or database error
     post:
+      operationId: recordStockMovement
       tags: [Stock movements]
       summary: Record stock-in or stock-out transactionally
       requestBody:
@@ -277,21 +391,25 @@ paths:
               $ref: "#/components/schemas/StockMovementCreate"
       responses:
         "201":
-          description: Movement recorded
+          description: Movement recorded; includes the movement and resulting stock quantity
         "400":
-          description: Invalid movement
+          description: Invalid product UUID or movement input
         "401":
           description: Authentication required
         "404":
-          description: Product not found
+          description: Product not found or not owned by the authenticated user
         "409":
-          description: Insufficient stock
+          description: Insufficient stock for the requested stock-out operation
+        "500":
+          description: Unexpected server or database error
+
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
   parameters:
     ProductId:
       in: path
@@ -307,6 +425,7 @@ components:
       schema:
         type: string
         format: uuid
+
   schemas:
     ProductCreate:
       type: object
@@ -326,12 +445,13 @@ components:
           minimum: 0
           default: 5
         unitPrice:
-          type: number
+          type: [number, "null"]
           minimum: 0
           multipleOf: 0.01
         categoryId:
           type: string
           format: uuid
+
     ProductUpdate:
       type: object
       additionalProperties: false
@@ -355,6 +475,7 @@ components:
         categoryId:
           type: [string, "null"]
           format: uuid
+
     StockMovementCreate:
       type: object
       additionalProperties: false
@@ -367,5 +488,5 @@ components:
           type: integer
           minimum: 1
         note:
-          type: string
-          maxLength: 1000
+          type: [string, "null"]
+          maxLength: 500
