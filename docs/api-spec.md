@@ -3,7 +3,9 @@
 **Base path:** `/api/v1`  
 **Format:** JSON  
 **Authentication:** `Authorization: Bearer <JWT>` on protected endpoints.  
-**Status:** This is the planned contract. Endpoints marked below are not necessarily implemented yet.
+**Status:** Core authentication, category, product, and stock-movement
+endpoints are implemented and manually tested. Final documentation
+alignment, automated testing, security review, and deployment remain.
 
 ## Common response conventions
 
@@ -62,124 +64,230 @@ Public. Runs a lightweight database query.
 
 ## Authentication
 
+Registration and login are public endpoints. All category, product, and stock-movement endpoints require a valid JWT bearer token.
+
 ### `POST /auth/register`
-Public. Creates an account and stores a bcrypt password hash.
+
+Creates a user account and stores a bcrypt password hash. The response includes the user's public account fields only; the password and password hash are never returned.
 
 **Request:**
+
 ```json
-{ "email": "owner@example.com", "password": "StrongPass123!" }
+{
+  "email": "owner@example.com",
+  "password": "StrongPass123!"
+}
 ```
 
 **Response `201`:**
+
 ```json
 {
   "success": true,
   "message": "Account created successfully.",
-  "data": { "id": "uuid", "email": "owner@example.com" }
+  "data": {
+    "id": "user-uuid",
+    "email": "owner@example.com",
+    "createdAt": "2026-10-23T10:00:00.000Z"
+  }
 }
 ```
 
-**Status codes:** `201`, `400` invalid input, `409` email already registered.
+**Status codes:** `201` account created, `400` invalid input, `409` email already registered.
+
+Passwords must satisfy the registration validation rules. Passwords exceeding bcrypt's 72-byte UTF-8 input limit are rejected.
 
 ### `POST /auth/login`
-Public. Verifies credentials and returns a JWT.
+
+Verifies the user's credentials and returns a JWT bearer token.
 
 **Request:**
+
 ```json
-{ "email": "owner@example.com", "password": "StrongPass123!" }
+{
+  "email": "owner@example.com",
+  "password": "StrongPass123!"
+}
 ```
 
 **Response `200`:**
+
 ```json
 {
   "success": true,
   "message": "Login successful.",
   "data": {
+    "user": {
+      "id": "user-uuid",
+      "email": "owner@example.com"
+    },
     "token": "<jwt>",
     "tokenType": "Bearer",
-    "expiresIn": "1d"
+    "expiresIn": "1h"
   }
 }
 ```
 
-**Status codes:** `200`, `400` invalid input, `401` invalid credentials.
+The token expiration is controlled by `JWT_EXPIRES_IN` and defaults to `1h` if the environment variable is not configured.
+
+**Status codes:** `200` login successful, `400` invalid input, `401` invalid email or password.
+
+Unknown email addresses and incorrect passwords produce the same authentication error response.
 
 ## Categories
 
-All category endpoints require authentication. A category belongs to the authenticated user.
+All category endpoints require authentication. Each category belongs to the authenticated user. Users can only retrieve, update, or delete their own categories.
 
 ### `POST /categories`
-Creates a category.
+
+Creates a category for the authenticated user.
 
 **Request:**
+
 ```json
-{ "name": "Groceries", "description": "Food and household essentials" }
+{
+  "name": "Groceries",
+  "description": "Food and household essentials"
+}
 ```
 
+The `name` field is required. The `description` field is optional.
+
 **Response `201`:**
+
 ```json
 {
   "success": true,
   "message": "Category created successfully.",
   "data": {
-    "id": "uuid",
+    "id": "category-uuid",
     "userId": "authenticated-user-uuid",
     "name": "Groceries",
     "description": "Food and household essentials",
-    "createdAt": "2026-01-01T12:00:00.000Z"
+    "createdAt": "2026-10-23T12:00:00.000Z"
   }
 }
 ```
 
-**Status codes:** `201`, `400`, `401`.
+**Status codes:** `201` category created, `400` invalid request, `401` unauthorized, `409` duplicate category name, `500` unexpected server error.
 
 ### `GET /categories`
-Lists categories owned by the authenticated user.
 
-**Response `200`:** `{ "success": true, "data": [{ "id": "uuid", "name": "Groceries" }] }`
+Lists all categories owned by the authenticated user.
 
-**Status codes:** `200`, `401`.
+**Response `200`:**
 
-### `GET /categories/:categoryId`
-Gets one category owned by the authenticated user.
-
-**Response `200`:** `{ "success": true, "data": { "id": "uuid", "name": "Groceries" } }`
-
-**Status codes:** `200`, `401`, `404`.
-
-### `PATCH /categories/:categoryId`
-Updates a category's `name` and/or `description`.
-
-**Request:**
 ```json
-{ "name": "Dry Goods" }
+{
+  "success": true,
+  "count": 1,
+  "data": [
+    {
+      "id": "category-uuid",
+      "userId": "authenticated-user-uuid",
+      "name": "Groceries",
+      "description": "Food and household essentials",
+      "createdAt": "2026-10-23T12:00:00.000Z"
+    }
+  ]
+}
 ```
 
-**Response `200`:** `{ "success": true, "message": "Category updated successfully.", "data": { "id": "uuid", "name": "Dry Goods" } }`
+The `count` field represents the number of categories returned.
 
-**Status codes:** `200`, `400`, `401`, `404`.
+**Status codes:** `200`, `401`, `500`.
+
+### `GET /categories/:categoryId`
+
+Retrieves a category owned by the authenticated user.
+
+**Response `200`:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "category-uuid",
+    "userId": "authenticated-user-uuid",
+    "name": "Groceries",
+    "description": "Food and household essentials",
+    "createdAt": "2026-10-23T12:00:00.000Z"
+  }
+}
+```
+
+**Status codes:** `200`, `400` invalid UUID, `401`, `404` category not found or not owned by the user, `500`.
+
+### `PATCH /categories/:categoryId`
+
+Updates a category's `name`, `description`, or both. Only the supplied fields are updated.
+
+**Request:**
+
+```json
+{
+  "name": "Dry Goods"
+}
+```
+
+**Response `200`:**
+
+```json
+{
+  "success": true,
+  "message": "Category updated successfully.",
+  "data": {
+    "id": "category-uuid",
+    "userId": "authenticated-user-uuid",
+    "name": "Dry Goods",
+    "description": "Food and household essentials",
+    "createdAt": "2026-10-23T12:00:00.000Z"
+  }
+}
+```
+
+A category name that duplicates another category belonging to the same user is rejected.
+
+**Status codes:** `200`, `400` invalid request or UUID, `401`, `404` category not found or not owned by the user, `409` duplicate category name, `500`.
 
 ### `DELETE /categories/:categoryId`
-Deletes a category owned by the authenticated user. Products in that category keep their records and have `categoryId` set to `null`.
 
-**Response:** `204 No Content`.
+Deletes a category owned by the authenticated user.
 
-**Status codes:** `204`, `401`, `404`.
+Products previously associated with the category are preserved, and their `categoryId` values become `null` through the database's foreign-key relationship.
+
+**Response `200`:**
+
+```json
+{
+  "success": true,
+  "message": "Category deleted successfully.",
+  "data": {
+    "id": "category-uuid",
+    "name": "Groceries"
+  }
+}
+```
+
+**Status codes:** `200`, `400` invalid UUID, `401`, `404` category not found or not owned by the user, `500`.
 
 ## Products
 
-All product endpoints require authentication. Product queries and mutations must be scoped to the authenticated user's ID. `userId` is never accepted as an ownership field from the request body. SKU is unique within a user's inventory, not globally.
+All product endpoints require authentication. Product queries and mutations are scoped to the authenticated user's ID. The API does not accept `userId` from the request body as an ownership field.
 
-Product status is computed:
-- `OUT_OF_STOCK` if `quantity === 0`
-- `LOW_STOCK` if `quantity > 0 && quantity <= minimumStockLevel`
-- `IN_STOCK` if `quantity > minimumStockLevel`
+SKU is unique within each user's inventory, not globally.
 
 ### `POST /products`
-Creates a product. `name` and `sku` are required. `quantity` is initialized to `0` by the server and is not accepted in the create request; `minimumStockLevel` defaults to `5`, and `unitPrice`/`categoryId` are optional. If `categoryId` is provided, the category must belong to the authenticated user. New products should start with quantity `0`; any initial stock should be recorded through a stock-in movement so the history remains auditable.
+
+Creates a product.
+
+The `name` and `sku` fields are required. `quantity` is initialized to `0` by the server and cannot be supplied in the create request. `minimumStockLevel` defaults to `5`. `unitPrice` and `categoryId` are optional.
+
+If `categoryId` is provided, the category must belong to the authenticated user. New products should receive initial stock through a stock-in movement so that the movement history remains auditable.
 
 **Request:**
-```json
+
+```json id="4j2w5d"
 {
   "name": "Golden Penny Rice 5kg",
   "sku": "RICE-005",
@@ -190,7 +298,8 @@ Creates a product. `name` and `sku` are required. `quantity` is initialized to `
 ```
 
 **Response `201`:**
-```json
+
+```json id="1x8g3j"
 {
   "success": true,
   "message": "Product created successfully.",
@@ -203,90 +312,283 @@ Creates a product. `name` and `sku` are required. `quantity` is initialized to `
     "quantity": 0,
     "minimumStockLevel": 10,
     "unitPrice": "4500.00",
-    "status": "OUT_OF_STOCK",
-    "createdAt": "2026-01-01T12:00:00.000Z",
-    "updatedAt": "2026-01-01T12:00:00.000Z"
+    "createdAt": "2026-10-23T12:00:00.000Z",
+    "updatedAt": "2026-10-23T12:00:00.000Z"
   }
 }
 ```
 
-**Status codes:** `201`, `400`, `401`, `404` invalid/not-owned category, `409` duplicate SKU.
+The example assumes the category exists and belongs to the authenticated user. Database-generated IDs and timestamps will vary.
+
+**Status codes:** `201` product created, `400` invalid request, `401` unauthorized, `404` category not found or not owned by the user, `409` duplicate SKU, `500` unexpected server error.
 
 ### `GET /products`
-Lists the authenticated user's products. Optional query parameters: `search`, `categoryId`, `status`. Filtering and pagination can be implemented as time permits; at minimum, the endpoint returns only the user's products.
 
-**Response `200`:** `{ "success": true, "data": [{ "id": "product-uuid", "name": "Golden Penny Rice 5kg", "sku": "RICE-005", "quantity": 0, "minimumStockLevel": 10, "status": "OUT_OF_STOCK" }] }`
+Lists products belonging to the authenticated user.
 
-**Status codes:** `200`, `401`.
+The optional `categoryId` query parameter filters the results to products associated with that category UUID.
 
-### `GET /products/:productId`
-Gets one product owned by the authenticated user.
+**Example request:**
 
-**Response `200`:** `{ "success": true, "data": { "id": "product-uuid", "name": "Golden Penny Rice 5kg", "sku": "RICE-005" } }`
-
-**Status codes:** `200`, `401`, `404`.
-
-### `PATCH /products/:productId`
-Updates product metadata. Allowed fields: `name`, `sku`, `minimumStockLevel`, `unitPrice`, and `categoryId`. **Do not update `quantity` here**; stock changes must go through stock-movement endpoints.
-
-**Request:**
-```json
-{ "minimumStockLevel": 12, "unitPrice": 4600.00 }
+```http
+GET /api/v1/products?categoryId=category-uuid
 ```
 
-**Response `200`:** `{ "success": true, "message": "Product updated successfully.", "data": { "id": "product-uuid", "minimumStockLevel": 12, "unitPrice": "4600.00" } }`
+**Response `200`:**
 
-**Status codes:** `200`, `400`, `401`, `404`, `409` duplicate SKU.
+```json id="62g8dy"
+{
+  "success": true,
+  "count": 1,
+  "data": [
+    {
+      "id": "product-uuid",
+      "userId": "authenticated-user-uuid",
+      "categoryId": "category-uuid",
+      "name": "Golden Penny Rice 5kg",
+      "sku": "RICE-005",
+      "quantity": 0,
+      "minimumStockLevel": 10,
+      "unitPrice": "4500.00",
+      "createdAt": "2026-10-23T12:00:00.000Z",
+      "updatedAt": "2026-10-23T12:00:00.000Z"
+    }
+  ]
+}
+```
+
+The `count` field indicates the number of products returned.
+
+**Status codes:** `200`, `400` invalid category UUID, `401`, `500`.
+
+### `GET /products/:productId`
+
+Retrieves a product owned by the authenticated user.
+
+**Response `200`:**
+
+```json id="5vrm8f"
+{
+  "success": true,
+  "data": {
+    "id": "product-uuid",
+    "userId": "authenticated-user-uuid",
+    "categoryId": "category-uuid",
+    "name": "Golden Penny Rice 5kg",
+    "sku": "RICE-005",
+    "quantity": 0,
+    "minimumStockLevel": 10,
+    "unitPrice": "4500.00",
+    "createdAt": "2026-10-23T12:00:00.000Z",
+    "updatedAt": "2026-10-23T12:00:00.000Z"
+  }
+}
+```
+
+**Status codes:** `200`, `400` invalid product UUID, `401`, `404` product not found or not owned by the user, `500`.
+
+### `PATCH /products/:productId`
+
+Updates product details. Supported fields are `name`, `sku`, `minimumStockLevel`, `unitPrice`, and `categoryId`.
+
+Only supplied fields are updated. The `quantity` field cannot be changed through this endpoint; stock changes must use the stock-movement endpoints.
+
+Set `categoryId` to `null` to remove the product's category association. If a non-null category ID is supplied, the category must belong to the authenticated user.
+
+**Request:**
+
+```json id="1t5vhr"
+{
+  "minimumStockLevel": 12,
+  "unitPrice": 4600.00
+}
+```
+
+**Response `200`:**
+
+```json id="a2b4dc"
+{
+  "success": true,
+  "message": "Product updated successfully.",
+  "data": {
+    "id": "product-uuid",
+    "userId": "authenticated-user-uuid",
+    "categoryId": "category-uuid",
+    "name": "Golden Penny Rice 5kg",
+    "sku": "RICE-005",
+    "quantity": 0,
+    "minimumStockLevel": 12,
+    "unitPrice": "4600.00",
+    "createdAt": "2026-10-23T12:00:00.000Z",
+    "updatedAt": "2026-10-23T12:05:00.000Z"
+  }
+}
+```
+
+**Status codes:** `200`, `400` invalid request or product UUID, `401`, `404` product or category not found or not owned by the user, `409` duplicate SKU, `500`.
 
 ### `DELETE /products/:productId`
-Deletes a product owned by the authenticated user. Deleting a product also deletes its stock movement history under the current schema's cascading relationship; this behavior should be made clear to the client.
 
-**Response:** `204 No Content`.
+Deletes a product owned by the authenticated user.
 
-**Status codes:** `204`, `401`, `404`.
+Deleting a product also deletes its associated stock-movement history through the database's cascading relationship.
+
+**Response `200`:**
+
+```json id="w7ns4k"
+{
+  "success": true,
+  "message": "Product deleted successfully.",
+  "data": {
+    "id": "product-uuid",
+    "name": "Golden Penny Rice 5kg",
+    "sku": "RICE-005"
+  }
+}
+```
+
+**Status codes:** `200`, `400` invalid product UUID, `401`, `404` product not found or not owned by the user, `500`.
 
 ## Stock movements
 
-All stock movement endpoints require authentication and ownership checks.
+Stock movements record changes to a product's stock quantity. Only authenticated users can record or view movements for products they own.
 
-### `POST /products/:productId/stock-movements`
-Records stock entering or leaving a product. Quantity must be a positive integer. The product quantity update and movement insert must happen in one database transaction. `STOCK_OUT` is rejected if it would make stock negative.
+### Record a stock movement
 
-**Request (stock-in):**
+**Endpoint:** `POST /products/:productId/stock-movements`
+
+**Authentication:** Required
+
+**Description:** Records stock entering or leaving a product's inventory. The product quantity update and movement record are saved within a single database transaction.
+
+**Request body — stock received:**
+
 ```json
-{ "type": "STOCK_IN", "quantity": 20, "note": "Restock delivery" }
+{
+  "type": "STOCK_IN",
+  "quantity": 20,
+  "note": "Restock delivery"
+}
 ```
 
-**Request (stock-out):**
+**Request body — stock removed:**
+
 ```json
-{ "type": "STOCK_OUT", "quantity": 3, "note": "Items sold" }
+{
+  "type": "STOCK_OUT",
+  "quantity": 3,
+  "note": "Items sold"
+}
 ```
 
-**Response `201`:**
+The `note` field is optional, may be `null`, and must not exceed 500 characters.
+
+**Validation rules:**
+
+* `type` must be `STOCK_IN` or `STOCK_OUT`.
+* `quantity` must be a positive integer.
+* Additional request properties are rejected.
+* `productId` must be a valid UUID.
+* The product must belong to the authenticated user.
+* A stock-out operation cannot remove more units than are currently available.
+
+**Success response — `201 Created`:**
+
 ```json
 {
   "success": true,
   "message": "Stock movement recorded successfully.",
   "data": {
     "id": "movement-uuid",
+    "userId": "user-uuid",
     "productId": "product-uuid",
     "type": "STOCK_IN",
     "quantity": 20,
     "note": "Restock delivery",
-    "createdAt": "2026-01-01T12:00:00.000Z",
+    "createdAt": "2026-10-23T10:00:00.000Z",
     "resultingStock": 20
   }
 }
 ```
 
-**Status codes:** `201`, `400`, `401`, `404`, `409` insufficient stock/business-rule conflict.
+The UUIDs and timestamp above are illustrative. The actual response includes the database-generated movement fields and the product's resulting stock quantity.
 
-### `GET /products/:productId/stock-movements`
-Lists movement history for a product owned by the authenticated user, newest first.
+**Error responses:**
 
-**Response `200`:** `{ "success": true, "data": [{ "id": "movement-uuid", "type": "STOCK_IN", "quantity": 20, "note": "Restock delivery", "createdAt": "2026-01-01T12:00:00.000Z" }] }`
+| Status                      | Condition                                                           | Message                                                             |
+| --------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `400 Bad Request`           | Invalid product UUID or invalid request body                        | Validation error or `Invalid product ID. A valid UUID is required.` |
+| `401 Unauthorized`          | Missing, invalid, or expired authentication token                   | Authentication error                                                |
+| `404 Not Found`             | Product does not exist or does not belong to the authenticated user | `Product not found.`                                                |
+| `409 Conflict`              | Stock-out quantity exceeds available stock                          | `Insufficient stock for this operation.`                            |
+| `500 Internal Server Error` | Unexpected server or database error                                 | `An error occurred while recording the stock movement.`             |
 
-**Status codes:** `200`, `401`, `404`.
+For an insufficient-stock response, the API also returns `availableStock`, indicating the product's current quantity.
+
+**Insufficient-stock example — `409 Conflict`:**
+
+```json
+{
+  "success": false,
+  "message": "Insufficient stock for this operation.",
+  "availableStock": 2
+}
+```
+
+### Retrieve stock movement history
+
+**Endpoint:** `GET /products/:productId/stock-movements`
+
+**Authentication:** Required
+
+**Description:** Retrieves the movement history for a product owned by the authenticated user, ordered from newest to oldest.
+
+**Success response — `200 OK`:**
+
+```json
+{
+  "success": true,
+  "count": 2,
+  "data": [
+    {
+      "id": "movement-uuid-2",
+      "userId": "user-uuid",
+      "productId": "product-uuid",
+      "type": "STOCK_OUT",
+      "quantity": 3,
+      "note": "Items sold",
+      "createdAt": "2026-10-23T11:00:00.000Z"
+    },
+    {
+      "id": "movement-uuid-1",
+      "userId": "user-uuid",
+      "productId": "product-uuid",
+      "type": "STOCK_IN",
+      "quantity": 20,
+      "note": "Restock delivery",
+      "createdAt": "2026-10-23T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+**Error responses:**
+
+| Status                      | Condition                                                           | Message                                               |
+| --------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------- |
+| `400 Bad Request`           | Invalid product UUID                                                | `Invalid product ID. A valid UUID is required.`       |
+| `401 Unauthorized`          | Missing, invalid, or expired authentication token                   | Authentication error                                  |
+| `404 Not Found`             | Product does not exist or does not belong to the authenticated user | `Product not found.`                                  |
+| `500 Internal Server Error` | Unexpected server or database error                                 | `An error occurred while retrieving stock movements.` |
+
+### Stock movement rules
+
+* Stock changes are recorded through stock movements rather than direct product quantity edits.
+* Each movement and its corresponding product quantity update occur within one database transaction.
+* The product row is locked during a stock update to help prevent concurrent stock changes from overwriting one another.
+* Stock-out operations cannot reduce the quantity below zero.
+* Users can record or view movements only for products they own.
+* Movement history is returned in descending creation-time order.
 
 ## Design decisions
 
