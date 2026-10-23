@@ -1,129 +1,280 @@
 # StockAlert API
 
-StockAlert API is a REST API for small retail shop owners to manage inventory, track stock movements, and identify products that are running low.
+StockAlert API is a REST API designed for small retail shop owners to manage inventory, organize products into categories, record stock movements, and identify products that are running low.
 
-The project is being built as a three-week, part-time learning project. It uses dummy/development data during development and is designed so each authenticated user's inventory is isolated from other users.
+The project is being developed as a three-week, part-time learning project using JavaScript, Express, PostgreSQL, and Drizzle ORM. Each authenticated user has an isolated inventory, and stock changes are recorded through dedicated stock-movement operations.
 
-## Project status
+## Project Status
 
-## Project status
+**Current phase: Week 2 completed; Week 3 testing, documentation, security review, and deployment work remains.**
 
-**Completed**
+### Completed Features
 
-* Node.js and Express server setup using JavaScript ES modules.
-* PostgreSQL database connection using `pg`.
-* Drizzle ORM schema and migrations for `users`, `categories`, `products`, and `stock_movements`.
+* Node.js and Express server using JavaScript ES modules.
+* PostgreSQL database connection and Drizzle ORM schema and migrations.
+* Database tables for users, categories, products, and stock movements.
 * Server and database health-check endpoints.
-* Product CRUD endpoints: create, list, retrieve by ID, update, and delete.
-* Request-body validation using Zod.
-* Per-user SKU uniqueness enforced at the database level.
-* Product ownership filtering through temporary development-user middleware.
-* Sample categories and products inserted for development.
-* Manual API testing using HTTP requests, including successful requests, validation errors, duplicate SKU conflicts, and missing-product responses.
-* API design documentation and sample HTTP requests.
-
-**Still to implement**
-
 * User registration and login.
-* Password hashing and JWT-based authentication.
-* Replacement of temporary development-user middleware with verified authentication.
-* Category CRUD endpoints.
-* Stock-in and stock-out operations, including stock movement records and transactional quantity updates.
-* Computed stock-status responses.
-* Automated tests, final documentation review, security checks, and deployment.
+* Password hashing using bcrypt.
+* JWT-based bearer-token authentication for protected routes.
+* Per-user authorization and resource ownership checks.
+* Category CRUD operations, including duplicate-name validation.
+* Product CRUD operations with request validation.
+* Per-user SKU uniqueness enforced by a database constraint.
+* Category ownership checks when creating or updating products.
+* Product filtering by category.
+* Stock-in and stock-out operations.
+* Stock movement history for individual products.
+* Transactional stock updates and movement-record creation.
+* Prevention of stock-out operations that would result in negative stock.
+* UUID validation for product, category, and stock-movement endpoints.
+* Request validation using Zod, including rejection of unexpected fields.
+* Manual API testing of successful requests, invalid input, authentication failures, duplicate records, missing resources, ownership restrictions, and stock-movement edge cases.
+* API design documentation, an OpenAPI document, an ERD, and example HTTP requests.
 
+### Remaining Work
 
-## Technology stack
+* Add automated tests and document how to run them.
+* Review and align the API specification, OpenAPI document, and implemented responses.
+* Complete the security review and production configuration checks.
+* Deploy the API and verify the deployed endpoints.
+* Finalize the project documentation and presentation.
 
-- **Runtime:** Node.js (JavaScript, ES modules)
-- **HTTP framework:** Express
-- **Database:** PostgreSQL
-- **Database access and migrations:** Drizzle ORM, Drizzle Kit, `pg`
-- **Configuration:** dotenv
-- **Request validation:** Zod
-- **Authentication:** bcrypt for password hashing and JWT for bearer tokens
-- **Testing:** Node.js test runner or another lightweight test framework (to be confirmed during Week 3)
-- **API documentation:** OpenAPI
-- **Tools:** Git/GitHub, VS Code, PostgreSQL SQL Shell/pgAdmin, Postman or an equivalent HTTP client
+## Technology Stack
 
-## Main entities
+| Area               | Technology                                          |
+| ------------------ | --------------------------------------------------- |
+| Runtime            | Node.js                                             |
+| Language           | JavaScript with ES modules                          |
+| HTTP framework     | Express                                             |
+| Database           | PostgreSQL                                          |
+| Database access    | Drizzle ORM                                         |
+| Migrations         | Drizzle Kit                                         |
+| PostgreSQL driver  | `pg`                                                |
+| Configuration      | dotenv                                              |
+| Request validation | Zod                                                 |
+| Password hashing   | bcrypt                                              |
+| Authentication     | JSON Web Tokens (JWT)                               |
+| API documentation  | OpenAPI                                             |
+| Development tools  | VS Code, Git, GitHub, PostgreSQL tools, and Postman |
 
-- **User:** account and authentication details
-- **Category:** a user's product categories
-- **Product:** an inventory item with SKU, quantity, minimum stock level, and optional price/category
-- **StockMovement:** an auditable record of stock entering or leaving a product's inventory
+## Main Entities
 
-See [`docs/erd.dbml`](docs/erd.dbml), [`docs/api-spec.md`](docs/api-spec.md), and [`docs/work-plan.md`](docs/work-plan.md).
+* **User:** Stores account information and authentication details.
+* **Category:** Groups products belonging to a user.
+* **Product:** Represents an inventory item with a name, SKU, quantity, minimum stock level, price, and optional category.
+* **StockMovement:** Records stock entering or leaving a product's inventory, including movement type, quantity, optional note, and timestamp.
+
+### Data Relationships
+
+* A user can own multiple categories.
+* A user can own multiple products.
+* A user can have multiple stock-movement records.
+* A category can contain multiple products.
+* A product can have multiple stock-movement records.
+* Deleting a category preserves its products and removes their category association.
+* Deleting a product also deletes its associated stock-movement records.
+
+See [`docs/erd.dbml`](docs/erd.dbml) for the database relationship diagram.
 
 ## Requirements
 
-Install a supported Node.js LTS version and PostgreSQL. Create a PostgreSQL database for this project (currently named `stockalert_db`). Do not use the separate database belonging to another project.
+Install Node.js and PostgreSQL before running the project locally.
 
-## Run locally
+The development database is named `stockalert_db`. Make sure you use this project's database rather than the separate database used by another project.
 
-1. Clone the repository and enter the project directory.
-2. Install dependencies:
+## Run Locally
 
-   ```bash
-   npm install
-   ```
+### 1. Clone the repository
 
-3. Copy `.env.example` to `.env` and replace the placeholder database credentials with your local PostgreSQL settings. Never commit `.env`.
+```bash
+git clone https://github.com/Kennharbor/Stock-Alert-Project.git
+cd Stock-Alert-Project
+```
 
-   PowerShell:
+### 2. Install dependencies
 
-   ```powershell
-   Copy-Item .env.example .env
-   ```
+```bash
+npm install
+```
 
-4. Ensure the database named in `DATABASE_URL` exists.
-5. Apply migrations:
+### 3. Configure environment variables
 
-   ```bash
-   npx drizzle-kit migrate
-   ```
+Copy the example environment file:
 
-6. Start the development server:
+PowerShell:
 
-   ```bash
-   npm run dev
-   ```
+```powershell
+Copy-Item .env.example .env
+```
 
-   Or start it normally:
+Update `.env` with your local PostgreSQL connection details and a strong, unique JWT secret.
 
-   ```bash
-   npm start
-   ```
+The project requires a `DATABASE_URL` connection string and a `JWT_SECRET`. The token lifetime can be configured with `JWT_EXPIRES_IN`; the application defaults to `1h` when that variable is not set.
 
-7. Check the server:
+Keep `.env` private and never commit it to Git.
 
-   - `GET http://localhost:3000/api/v1/health`
-   - `GET http://localhost:3000/api/v1/health/db`
+### 4. Create the database
 
-The current package scripts are expected to be `dev: node --watch src/server.js` and `start: node src/server.js`.
+Create a PostgreSQL database named `stockalert_db`, or use another database dedicated to this project and update `DATABASE_URL` accordingly.
 
-## Environment variables
+### 5. Apply database migrations
 
-See [`.env.example`](.env.example). Keep secrets and local credentials in `.env`, which must remain untracked by Git.
+```bash
+npx drizzle-kit migrate
+```
 
-## Key design decisions
+### 6. Start the development server
 
-1. **PostgreSQL instead of a NoSQL database:** the data has clear relationships and needs foreign keys, uniqueness constraints, transactions, and reliable stock updates.
-2. **Drizzle ORM:** provides JavaScript-friendly schema definitions and SQL migrations while keeping the underlying SQL concepts visible.
-3. **UUID primary keys:** records can use stable identifiers without exposing sequential database IDs.
-4. **SKU unique per user:** a composite unique constraint on `(user_id, sku)` allows different shops to use the same SKU while preventing duplicates within one shop's inventory.
-5. **Quantity changes through stock movements:** stock-in and stock-out operations will update product quantity and create a movement record in the same database transaction. Ordinary product updates must not directly change quantity.
-6. **Ownership enforced on the server:** the authenticated user ID comes from verified authentication middleware, never from a client-supplied `userId`. All category, product, and movement operations must be scoped to that user.
-7. **Computed stock status:** `OUT_OF_STOCK` when quantity is zero; `LOW_STOCK` when quantity is above zero and less than or equal to the minimum stock level; otherwise `IN_STOCK`.
-8. **Validation at two levels:** Zod validates incoming requests; database constraints protect critical integrity rules.
+```bash
+npm run dev
+```
 
-## API overview
+To start the server without watch mode:
 
-All application endpoints use the `/api/v1` prefix. Authentication uses a bearer JWT after login. The current API contract is documented in [`docs/api-spec.md`](docs/api-spec.md) and [`docs/openapi.yaml`](docs/openapi.yaml).
+```bash
+npm start
+```
 
-## Security notes
+The application uses port `3000` by default, unless configured otherwise.
 
-- Never commit `.env`, passwords, JWT secrets, or real customer data.
-- Passwords will be hashed with bcrypt; plaintext passwords must never be stored.
-- Protected routes must verify JWTs and enforce per-user ownership.
-- Production deployment must use HTTPS and a strong, unique `JWT_SECRET`.
+### 7. Check server and database health
+
+Server health:
+
+```http
+GET http://localhost:3000/api/v1/health
+```
+
+Database health:
+
+```http
+GET http://localhost:3000/api/v1/health/db
+```
+
+A successful response confirms that the server is running or that the database health check has completed successfully.
+
+## Authentication
+
+Register a user through:
+
+```http
+POST /api/v1/auth/register
+Content-Type: application/json
+```
+
+Example request:
+
+```json
+{
+  "email": "owner@example.com",
+  "password": "your-development-password"
+}
+```
+
+Log in through:
+
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+```
+
+A successful login returns a JWT bearer token.
+
+Include that token when calling protected endpoints:
+
+```http
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+Registration and login are public endpoints. Product, category, and stock-movement operations require authentication.
+
+The API hashes passwords using bcrypt and verifies JWTs on protected routes. Resource queries are scoped to the authenticated user to prevent users from accessing another user's inventory.
+
+## API Overview
+
+All endpoints use the `/api/v1` prefix.
+
+| Method | Endpoint                                      | Purpose                                      | Authentication |
+| ------ | --------------------------------------------- | -------------------------------------------- | -------------- |
+| GET    | `/api/v1/health`                              | Check server health                          | No             |
+| GET    | `/api/v1/health/db`                           | Check database connectivity                  | No             |
+| POST   | `/api/v1/auth/register`                       | Register a user                              | No             |
+| POST   | `/api/v1/auth/login`                          | Log in and obtain a JWT                      | No             |
+| POST   | `/api/v1/categories`                          | Create a category                            | Yes            |
+| GET    | `/api/v1/categories`                          | List categories                              | Yes            |
+| GET    | `/api/v1/categories/:id`                      | Retrieve a category                          | Yes            |
+| PATCH  | `/api/v1/categories/:id`                      | Update a category                            | Yes            |
+| DELETE | `/api/v1/categories/:id`                      | Delete a category                            | Yes            |
+| POST   | `/api/v1/products`                            | Create a product                             | Yes            |
+| GET    | `/api/v1/products`                            | List products; optionally filter by category | Yes            |
+| GET    | `/api/v1/products/:id`                        | Retrieve a product                           | Yes            |
+| PATCH  | `/api/v1/products/:id`                        | Update product details                       | Yes            |
+| DELETE | `/api/v1/products/:id`                        | Delete a product                             | Yes            |
+| POST   | `/api/v1/products/:productId/stock-movements` | Record stock entering or leaving inventory   | Yes            |
+| GET    | `/api/v1/products/:productId/stock-movements` | Retrieve stock movement history              | Yes            |
+
+For complete request and response details, see [`docs/api-spec.md`](docs/api-spec.md) and [`docs/openapi.yaml`](docs/openapi.yaml).
+
+## Validation and Error Handling
+
+Zod validates incoming request bodies before they reach the relevant controller.
+
+The API validates resource UUIDs and checks resource ownership. Invalid input is rejected before the corresponding database operation proceeds.
+
+Examples of tested validation and error scenarios include:
+
+* Invalid request bodies return `400 Bad Request`.
+* Malformed resource UUIDs return `400 Bad Request`.
+* Requests without a valid bearer token return `401 Unauthorized` on protected routes.
+* Attempts to access resources belonging to another user return `404 Not Found`.
+* Duplicate category names or product SKUs within the same user's inventory are rejected.
+* Stock movement quantities must be positive whole numbers.
+* Invalid movement types and unexpected request properties are rejected.
+* Stock-out requests that exceed available inventory return `409 Conflict`.
+* Requests for valid but nonexistent resources return `404 Not Found`.
+
+The API also relies on PostgreSQL constraints to protect important data-integrity rules.
+
+## Key Design Decisions
+
+1. **PostgreSQL:** The inventory domain has clear relationships and benefits from foreign keys, unique constraints, and transactions.
+2. **Drizzle ORM:** Provides JavaScript-friendly schema definitions and migrations while keeping SQL concepts visible.
+3. **UUID primary keys:** Provide stable identifiers for users and inventory resources.
+4. **Per-user SKU uniqueness:** The composite unique constraint on `(user_id, sku)` allows different users to use the same SKU while preventing duplicates within an individual user's inventory.
+5. **Stock changes through movements:** Stock-in and stock-out operations update product quantity and create the corresponding movement record within one database transaction. Ordinary product updates cannot directly change quantity.
+6. **Server-side ownership checks:** Protected database operations use the authenticated user ID rather than trusting a user ID supplied by the client.
+7. **Category ownership:** A product can only be associated with a category owned by the authenticated user.
+8. **Validation at multiple levels:** Zod validates incoming requests, while database constraints protect critical integrity rules.
+9. **Computed stock status:** The intended status rules are:
+
+   * `OUT_OF_STOCK` when quantity is zero.
+   * `LOW_STOCK` when quantity is above zero and less than or equal to the minimum stock level.
+   * `IN_STOCK` when quantity exceeds the minimum stock level.
+
+   These rules describe the intended stock-status behavior; confirm whether a computed status response has been implemented before treating it as a completed API feature.
+
+## Testing
+
+The current implementation has been manually tested using an HTTP client.
+
+Testing has covered authentication, protected routes, product and category CRUD, resource ownership, UUID validation, request-body validation, stock movements, stock history, and important error responses.
+
+Automated test coverage, a repeatable test procedure, and final deployment verification remain part of the Week 3 work.
+
+## Project Documentation
+
+* [`docs/api-spec.md`](docs/api-spec.md) — API design and endpoint contracts.
+* [`docs/openapi.yaml`](docs/openapi.yaml) — OpenAPI specification.
+* [`docs/erd.dbml`](docs/erd.dbml) — Entity relationship diagram.
+* [`requests/products.http`](requests/products.http) — Example product HTTP requests.
+
+## Security Notes
+
+* Never commit `.env`, passwords, database credentials, or JWT secrets.
+* Never store plaintext passwords.
+* Use a strong, unique JWT secret.
+* Keep protected routes behind JWT authentication.
+* Scope database operations to the authenticated user.
+* Use HTTPS in production.
+* Review error handling, configuration, dependency advisories, and deployment settings before production use.
