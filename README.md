@@ -31,13 +31,14 @@ The project is being developed as a three-week, part-time learning project using
 * Request validation using Zod, including rejection of unexpected fields.
 * Manual API testing of successful requests, invalid input, authentication failures, duplicate records, missing resources, ownership restrictions, and stock-movement edge cases.
 * API design documentation, an OpenAPI document, an ERD, and example HTTP requests.
+* Automated tests using Node.js's built-in test runner, covering authentication, authorization, CRUD operations, validation, stock movements, and user data isolation.
 
 ### Remaining Work
 
-* Add automated tests and document how to run them.
-* Review and align the API specification, OpenAPI document, and implemented responses.
-* Complete the security review and production configuration checks.
+* Complete final security checks, deployment, and project presentation.
+* Final security and production configuration checks.
 * Deploy the API and verify the deployed endpoints.
+* Prepare the final project presentation.
 * Finalize the project documentation and presentation.
 
 ## Technology Stack
@@ -236,6 +237,15 @@ Examples of tested validation and error scenarios include:
 
 The API also relies on PostgreSQL constraints to protect important data-integrity rules.
 
+## Automated Testing
+
+The project uses Node.js's built-in test runner.
+
+Run the complete test suite with:
+
+```bash
+npm test
+```
 ## Key Design Decisions
 
 1. **PostgreSQL:** The inventory domain has clear relationships and benefits from foreign keys, unique constraints, and transactions.
